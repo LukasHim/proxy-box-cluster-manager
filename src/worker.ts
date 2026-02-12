@@ -8,7 +8,7 @@ export default {
   fetch: (request, env, ctx) => {
     if (new URL(request.url).pathname === '/api/connection') {
       const id = env.COMMAND_CENTER.idFromName('global');
-      const stub = env.COMMAND_CENTER.get(id);
+      const stub: CommandCenter & DurableObjectStub = env.COMMAND_CENTER.get(id, { locationHint: 'enam' }) as any;
 
       return stub.fetch(request);
     }

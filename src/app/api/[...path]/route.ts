@@ -5,7 +5,8 @@ async function handleRequest(request: Request, { params }: { params: Promise<{ p
   let path = (await params).path.join('/');
   const env: any = getCloudflareContext().env;
   const COMMAND_CENTER = env.COMMAND_CENTER as DurableObjectNamespace;
-  const stub: CommandCenter & DurableObjectStub = COMMAND_CENTER.getByName('global') as any;
+  const id = COMMAND_CENTER.idFromName('global');
+  const stub: CommandCenter & DurableObjectStub = COMMAND_CENTER.get(id, { locationHint: 'enam' }) as any;
   const uuid = new URL(request.url).searchParams.get('uuid') || 'default';
 
   switch (path) {
