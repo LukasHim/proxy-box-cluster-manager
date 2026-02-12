@@ -10588,13 +10588,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"opennextjs-cloudflare@npm:^1.0.0":
-  version: 1.0.0
-  resolution: "opennextjs-cloudflare@npm:1.0.0"
-  checksum: 10c0/f2de7e80428098c38814d5a0591cb69c1ecfe3471a01cd0d88e6f442f4077c8723d4293ad4ead5e77374c541fa58e2e6099a32b54a00418361b1a2f2d9a77932
-  languageName: node
-  linkType: hard
-
 "optionator@npm:^0.9.3":
   version: 0.9.4
   resolution: "optionator@npm:0.9.4"
@@ -10841,7 +10834,6 @@ __metadata:
     framer-motion: "npm:^12.34.0"
     lucide-react: "npm:^0.563.0"
     next: "npm:^16.1.6"
-    opennextjs-cloudflare: "npm:^1.0.0"
     postcss: "npm:^8.5.6"
     react: "npm:^19.2.4"
     react-dom: "npm:^19.2.4"
