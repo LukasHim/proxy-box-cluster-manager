@@ -1,5 +1,6 @@
 'use client';
 import { HeroUIProvider } from '@heroui/react';
+// @ts-ignore
 import '@/styles/globals.css';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

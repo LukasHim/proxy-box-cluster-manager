@@ -1,24 +1,46 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare';
-import { CommandCenter } from '@/worker';
-import { use } from 'react';
+import { CommandCenter } from '@/src/CommandCenter';
 
-/**
- * 核心路由处理器：将所有 /api/* 请求转发至单一 Durable Object 实例
- */
 async function handleRequest(request: Request, { params }: { params: Promise<{ path: string[] }> }) {
   const { path } = await params;
   const env: any = getCloudflareContext().env;
   const COMMAND_CENTER = env.COMMAND_CENTER as DurableObjectNamespace;
   const stub: DurableObjectStub & CommandCenter = COMMAND_CENTER.getByName('global') as any;
 
-  const uuid = new URL(request.url).searchParams.get('uuid');
+  const uuid = new URL(request.url).searchParams.get('uuid') || 'default';
   switch (path[0]) {
-    case 'status':
-      return new Response(JSON.stringify(await stub.getStatus()));
-      break;
+    case '/connection':
+      return stub.fetch(request);
+
+    case '/status':
+      return Response.json(await stub.getStatus());
+
+    case '/push': {
+      const { uuid, tasks } = (await request.json()) as any;
+      return Response.json({ sent: await stub.push(uuid, tasks) });
+    }
+
+    case '/broadcast': {
+      const tasks = await request.json();
+      return Response.json({ sent: await stub.broadcast(tasks) });
+    }
+
+    case '/config': {
+      return Response.json(await stub.getConfig(uuid));
+    }
+
+    case '/config/update': {
+      await stub.updateConfig(await request.json());
+      return new Response('ok');
+    }
+
+    case '/kick': {
+      await stub.kick(uuid);
+      return new Response('ok');
+    }
 
     default:
-      return stub.fetch(request);
+      return new Response('Not found', { status: 404 });
   }
 }
 

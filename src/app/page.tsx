@@ -34,7 +34,7 @@ export default function AdminPanel() {
 
   const sendCommand = async () => {
     if (!targetUuid) return;
-    await fetch(`/api/commands?uuid=${targetUuid}`, {
+    await fetch(`/api/broadcast?uuid=${targetUuid}`, {
       method: 'POST',
       body: command,
     });
