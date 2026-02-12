@@ -1,5 +1,5 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare';
-import { CommandCenter } from '@/src/CommandCenter';
+import { CommandCenter } from '@/CommandCenter';
 
 async function handleRequest(request: Request, { params }: { params: Promise<{ path: string[] }> }) {
   const { path } = await params;
