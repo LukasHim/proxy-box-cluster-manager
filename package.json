@@ -24,6 +24,7 @@
 		"@types/node": "^25.2.3",
 		"@types/react": "^19.2.14",
 		"@types/react-dom": "^19.2.3",
+		"dayjs": "^1.11.19",
 		"eslint": "^10.0.0",
 		"eslint-config-next": "^16.1.6",
 		"framer-motion": "^12.34.0",

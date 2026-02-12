@@ -5,43 +5,51 @@ async function handleRequest(request: Request, { params }: { params: Promise<{ p
   let path = (await params).path.join('/');
   const env: any = getCloudflareContext().env;
   const COMMAND_CENTER = env.COMMAND_CENTER as DurableObjectNamespace;
-  const stub: DurableObjectStub & CommandCenter = COMMAND_CENTER.getByName('global') as any;
+  const stub: CommandCenter & DurableObjectStub = COMMAND_CENTER.getByName('global') as any;
   const uuid = new URL(request.url).searchParams.get('uuid') || 'default';
 
   switch (path) {
-    case 'connection':
-      return stub.fetch(request);
-
     case 'status':
       return Response.json(await stub.getStatus());
 
     case 'push': {
-      const { uuid, tasks } = (await request.json()) as any;
-      return Response.json({ sent: await stub.push(uuid, tasks) });
+      if (request.body) {
+        const tasks = await request.json();
+        return Response.json({ sent: await stub.push(uuid, tasks) });
+      }
     }
 
     case 'broadcast': {
-      const tasks = await request.json();
-      return Response.json({ sent: await stub.broadcast(tasks) });
+      if (request.body) {
+        const tasks = await request.json();
+        return Response.json({ sent: await stub.broadcast(tasks) });
+      }
     }
 
     case 'config': {
       return Response.json(await stub.getConfig(uuid));
     }
 
+    case 'config/set': {
+      if (request.body) {
+        await stub.setConfig(await request.json());
+        return new Response('ok');
+      }
+    }
+
     case 'config/update': {
-      await stub.updateConfig(await request.json());
-      return new Response('ok');
+      if (request.body) {
+        await stub.updateConfig(await request.json());
+        return new Response('ok');
+      }
     }
 
     case 'kick': {
       await stub.kick(uuid);
       return new Response('ok');
     }
-
-    default:
-      return new Response('Not found', { status: 404 });
   }
+  return new Response('Not found', { status: 404 });
 }
 
 export const GET = handleRequest;

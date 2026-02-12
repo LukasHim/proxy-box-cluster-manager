@@ -1,0 +1,32 @@
+{
+  "name": "proxy-box-cluster-manager",
+  "dockerFile": "Dockerfile",
+
+  "workspaceFolder": "/workspace",
+  "mounts": [
+    "source=proxy-box-cluster-manager-node_modules,target=/workspace/node_modules,type=volume",
+    "source=proxy-box-cluster-manager-next_cache,target=/workspace/.next,type=volume"
+  ],
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+
+  "runArgs": ["--init"],
+  "forwardPorts": [3000, 8787],
+  "postCreateCommand": "yarn install",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "ms-azuretools.vscode-docker",
+        "bradlc.vscode-tailwindcss",
+        "IronGeek.vscode-env",
+        "mkxml.vscode-filesize",
+        "github.vscode-github-actions",
+        "eamodio.gitlens",
+        "yzhang.markdown-all-in-one",
+        "PKief.material-icon-theme",
+        "leizongmin.node-module-intellisense"
+      ]
+    }
+  }
+}

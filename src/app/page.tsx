@@ -6,7 +6,6 @@ import {
   CardBody,
   Button,
   Input,
-  Badge,
   Table,
   TableHeader,
   TableColumn,
@@ -14,11 +13,13 @@ import {
   TableRow,
   TableCell,
   Divider,
-  Chip,
 } from '@heroui/react';
+import dayjs from 'dayjs';
 
 export default function AdminPanel() {
-  const [status, setStatus] = useState<Record<string, number>>({});
+  const [status, setStatus] = useState<
+    Record<string, { connections: number; sessions: { version: string; ip: string; connectedAt: number }[] }>
+  >({});
   const [targetUuid, setTargetUuid] = useState('');
   const [command, setCommand] = useState('[{"type":"MSG","details":"Hello"}]');
 
@@ -34,14 +35,13 @@ export default function AdminPanel() {
 
   const sendCommand = async () => {
     if (!targetUuid) return;
-    await fetch(`/api/broadcast?uuid=${targetUuid}`, {
+    await fetch(`/api/push?uuid=${targetUuid}`, {
       method: 'POST',
       body: command,
     });
-    alert('指令已送达');
   };
 
-  const generateUuid = () => setTargetUuid(`node-${Math.random().toString(36).slice(-6)}`);
+  const generateUuid = () => setTargetUuid(crypto.randomUUID());
 
   useEffect(() => {
     refresh();
@@ -53,9 +53,6 @@ export default function AdminPanel() {
     <div className='max-w-6xl mx-auto space-y-6'>
       <header className='flex flex-wrap justify-between items-center px-2'>
         <h1 className='text-3xl font-bold text-blue-500'>Cluster Commander</h1>
-        <Chip color='success' variant='dot'>
-          Cloudflare Durable Object Online
-        </Chip>
       </header>
 
       <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
@@ -72,21 +69,28 @@ export default function AdminPanel() {
             <Table
               aria-label='Cluster status table'
               selectionMode='single'
-              onSelectionChange={keys => setTargetUuid(Array.from(keys)[0] as string)}>
+              onSelectionChange={keys => {
+                const selectedUuid: any = Array.from(keys)[0];
+                setTargetUuid(selectedUuid);
+              }}>
               <TableHeader>
                 <TableColumn>UUID</TableColumn>
                 <TableColumn>在线节点数</TableColumn>
-                <TableColumn>状态</TableColumn>
+                <TableColumn>连接信息</TableColumn>
               </TableHeader>
               <TableBody emptyContent={'暂无在线机器'}>
-                {Object.entries(status).map(([uuid, count]) => (
+                {Object.entries(status).map(([uuid, session]) => (
                   <TableRow key={uuid} className='cursor-pointer'>
                     <TableCell className='font-mono'>{uuid}</TableCell>
-                    <TableCell>{count}</TableCell>
-                    <TableCell>
-                      <Badge content='' color={count > 0 ? 'success' : 'danger'} shape='circle'>
-                        {count > 0 ? '在线' : '离线'}
-                      </Badge>
+                    <TableCell>{session.connections}</TableCell>
+                    <TableCell className='flex flex-col'>
+                      {session.sessions.map((session, index) => {
+                        return (
+                          <span key={index}>
+                            {`${session.version ?? ''} ${session.ip} ${dayjs(session.connectedAt).format('YYYY/MM/DD HH:mm:ss')}`}
+                          </span>
+                        );
+                      })}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -108,7 +112,7 @@ export default function AdminPanel() {
                 onValueChange={setTargetUuid}
                 variant='bordered'
               />
-              <Button color='primary' variant='flat' fullWidth onClick={generateUuid}>
+              <Button color='primary' variant='flat' fullWidth onPress={generateUuid}>
                 生成随机 UUID
               </Button>
             </CardBody>
@@ -119,8 +123,8 @@ export default function AdminPanel() {
             <Divider />
             <CardBody className='space-y-4'>
               <Input label='JSON 指令内容' value={command} onValueChange={setCommand} variant='underlined' />
-              <Button color='primary' fullWidth isDisabled={!targetUuid} onClick={sendCommand}>
-                立即推送任务
+              <Button color='primary' fullWidth isDisabled={!targetUuid} onPress={sendCommand}>
+                推送
               </Button>
             </CardBody>
           </Card>

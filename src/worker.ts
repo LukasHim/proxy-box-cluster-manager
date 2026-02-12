@@ -5,7 +5,15 @@ import { CommandCenter } from './CommandCenter';
 export { CommandCenter };
 
 export default {
-  fetch: handler.fetch,
+  fetch: (request, env, ctx) => {
+    if (new URL(request.url).pathname === '/api/connection') {
+      const id = env.COMMAND_CENTER.idFromName('global');
+      const stub = env.COMMAND_CENTER.get(id);
+
+      return stub.fetch(request);
+    }
+    return handler.fetch(request, env, ctx);
+  },
 
   async scheduled(event) {
     // ...

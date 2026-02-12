@@ -5,8 +5,16 @@ type Config = {
   [uuid: string]: any;
 };
 
+type Session = {
+  ws: WebSocket;
+  uuid: string;
+  version?: string;
+  ip?: string;
+  connectedAt: number;
+};
+
 export class CommandCenter extends DurableObject {
-  private sessions: Map<string, Set<WebSocket>> = new Map();
+  private sessions: Map<string, Set<Session>> = new Map();
   private config: Config = { base: {} };
 
   constructor(ctx: DurableObjectState, env: any) {
@@ -16,16 +24,17 @@ export class CommandCenter extends DurableObject {
       this.config = (await this.ctx.storage.get<Config>('config')) || { base: {} };
 
       for (const ws of this.ctx.getWebSockets()) {
-        const uuid = ws.deserializeAttachment() as string;
-        if (!uuid) continue;
+        const session: Session = ws.deserializeAttachment();
+        if (!session) continue;
 
-        if (!this.sessions.has(uuid)) {
-          this.sessions.set(uuid, new Set());
+        if (!this.sessions.has(session.uuid)) {
+          this.sessions.set(session.uuid, new Set());
         }
 
-        this.sessions.get(uuid)!.add(ws);
-
-        this.bindCleanup(ws, uuid);
+        this.sessions.get(session.uuid)!.add({
+          ...session,
+          ws,
+        });
       }
     });
 
@@ -33,10 +42,20 @@ export class CommandCenter extends DurableObject {
   }
 
   async getStatus() {
-    const stats: Record<string, number> = {};
+    const stats: Record<
+      string,
+      { connections: number; sessions: { version: string; ip: string; connectedAt: number }[] }
+    > = {};
 
     for (const [uuid, set] of this.sessions) {
-      stats[uuid] = set.size;
+      stats[uuid] = {
+        connections: set.size,
+        sessions: Array.from(set).map(s => ({
+          version: s.version,
+          ip: s.ip,
+          connectedAt: s.connectedAt,
+        })) as any,
+      };
     }
 
     return stats;
@@ -50,12 +69,12 @@ export class CommandCenter extends DurableObject {
 
     let sent = 0;
 
-    for (const ws of set) {
+    for (const session of set) {
       try {
-        ws.send(payload);
+        session.ws.send(payload);
         sent++;
       } catch {
-        set.delete(ws);
+        set.delete(session);
       }
     }
 
@@ -68,12 +87,12 @@ export class CommandCenter extends DurableObject {
     let sent = 0;
 
     for (const set of this.sessions.values()) {
-      for (const ws of set) {
+      for (const session of set) {
         try {
-          ws.send(payload);
+          session.ws.send(payload);
           sent++;
         } catch {
-          set.delete(ws);
+          set.delete(session);
         }
       }
     }
@@ -86,6 +105,11 @@ export class CommandCenter extends DurableObject {
       ...(this.config.base || {}),
       ...(this.config[uuid] || {}),
     };
+  }
+  async setConfig(body: Config) {
+    this.config = body;
+
+    await this.ctx.storage.put('config', this.config);
   }
   async updateConfig(body: Config) {
     this.config = {
@@ -100,9 +124,9 @@ export class CommandCenter extends DurableObject {
     const set = this.sessions.get(uuid);
     if (!set) return;
 
-    for (const ws of set) {
+    for (const session of set) {
       try {
-        ws.close(1000, 'kicked');
+        session.ws.close(1000);
       } catch {}
     }
 
@@ -110,48 +134,63 @@ export class CommandCenter extends DurableObject {
   }
 
   async fetch(request: Request) {
-    if (request.headers.get('upgrade') === 'websocket') {
-      const uuid = new URL(request.url).searchParams.get('uuid') || 'default';
-
-      const pair = new WebSocketPair();
-      const client = pair[0];
-      const server = pair[1];
-
-      this.ctx.acceptWebSocket(server);
-      server.serializeAttachment(uuid);
-
-      this.addToSession(uuid, server);
-
-      return new Response(null, {
-        status: 101,
-        webSocket: client,
-      });
-    } else {
-      return new Response(null, { status: 400 });
+    if (request.headers.get('upgrade') !== 'websocket') {
+      return new Response('Expected websocket', { status: 426 });
     }
+
+    const url = new URL(request.url);
+    const uuid = url.searchParams.get('uuid') || 'default';
+    const version = url.searchParams.get('version') || 'unknown';
+    const ip = request.headers.get('cf-connecting-ip') || request.headers.get('x-forwarded-for') || 'unknown';
+    const connectedAt = Date.now();
+
+    const webSocketPair = new WebSocketPair();
+    const [client, server] = Object.values(webSocketPair);
+    this.ctx.acceptWebSocket(server);
+
+    server.serializeAttachment({ uuid, version, ip, connectedAt } as Session);
+    this.addSession(uuid, server, connectedAt, version, ip);
+
+    return new Response(null, { status: 101, webSocket: client });
   }
 
-  private addToSession(uuid: string, ws: WebSocket) {
+  private addSession(uuid: string, ws: WebSocket, connectedAt: number, version?: string, ip?: string) {
     if (!this.sessions.has(uuid)) {
       this.sessions.set(uuid, new Set());
     }
 
-    this.sessions.get(uuid)!.add(ws);
-
-    this.bindCleanup(ws, uuid);
+    const set = this.sessions.get(uuid)!;
+    const session: Session = {
+      ws,
+      uuid,
+      version,
+      ip,
+      connectedAt,
+    };
+    set.add(session);
   }
 
-  private bindCleanup(ws: WebSocket, uuid: string) {
-    const cleanup = () => {
-      const set = this.sessions.get(uuid);
-      set?.delete(ws);
-
-      if (set?.size === 0) {
-        this.sessions.delete(uuid);
+  async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer) {}
+  async webSocketClose(ws: WebSocket, code: number, reason: string, wasClean: boolean) {
+    const session: Session = ws.deserializeAttachment();
+    const set = this.sessions.get(session.uuid);
+    set?.forEach(foo => {
+      if (foo.uuid === session.uuid) {
+        set.delete(foo);
       }
-    };
+    });
 
-    ws.addEventListener('close', cleanup);
-    ws.addEventListener('error', cleanup);
+    if (set?.size === 0) this.sessions.delete(session.uuid);
+  }
+  async webSocketError(ws: WebSocket, error: unknown) {
+    const session: Session = ws.deserializeAttachment();
+    const set = this.sessions.get(session.uuid);
+    set?.forEach(foo => {
+      if (foo.uuid === session.uuid) {
+        set.delete(foo);
+      }
+    });
+
+    if (set?.size === 0) this.sessions.delete(session.uuid);
   }
 }
