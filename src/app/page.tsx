@@ -24,7 +24,7 @@ export default function AdminPanel() {
 
   const refresh = async () => {
     try {
-      const res = await fetch('/api/status?uuid=admin');
+      const res = await fetch('/api/status');
       const data: any = await res.json();
       setStatus(data);
     } catch (e) {
@@ -45,16 +45,14 @@ export default function AdminPanel() {
 
   useEffect(() => {
     refresh();
-    const timer = setInterval(refresh, 3000);
+    const timer = setInterval(refresh, 10000);
     return () => clearInterval(timer);
   }, []);
 
   return (
     <div className='max-w-6xl mx-auto space-y-6'>
-      <header className='flex justify-between items-center px-2'>
-        <h1 className='text-3xl font-bold bg-gradient-to-r from-blue-500 to-cyan-400 bg-clip-text text-transparent'>
-          Cluster Commander
-        </h1>
+      <header className='flex flex-wrap justify-between items-center px-2'>
+        <h1 className='text-3xl font-bold text-blue-500'>Cluster Commander</h1>
         <Chip color='success' variant='dot'>
           Cloudflare Durable Object Online
         </Chip>

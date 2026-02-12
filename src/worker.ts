@@ -168,6 +168,9 @@ export class CommandCenter extends DurableObject {
   async fetch(req: Request) {
     const url = new URL(req.url);
 
+    console.log(url);
+    
+
     if (url.pathname === '/connection') {
       if (req.headers.get('upgrade') === 'websocket') {
         const uuid = url.searchParams.get('uuid') || 'default';
