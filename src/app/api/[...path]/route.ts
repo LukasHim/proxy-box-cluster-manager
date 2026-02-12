@@ -2,39 +2,41 @@ import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { CommandCenter } from '@/CommandCenter';
 
 async function handleRequest(request: Request, { params }: { params: Promise<{ path: string[] }> }) {
-  const { path } = await params;
+  let path = (await params).path.join('/');
   const env: any = getCloudflareContext().env;
   const COMMAND_CENTER = env.COMMAND_CENTER as DurableObjectNamespace;
   const stub: DurableObjectStub & CommandCenter = COMMAND_CENTER.getByName('global') as any;
 
   const uuid = new URL(request.url).searchParams.get('uuid') || 'default';
+  console.log(path);
+
   switch (path[0]) {
-    case '/connection':
+    case 'connection':
       return stub.fetch(request);
 
-    case '/status':
+    case 'status':
       return Response.json(await stub.getStatus());
 
-    case '/push': {
+    case 'push': {
       const { uuid, tasks } = (await request.json()) as any;
       return Response.json({ sent: await stub.push(uuid, tasks) });
     }
 
-    case '/broadcast': {
+    case 'broadcast': {
       const tasks = await request.json();
       return Response.json({ sent: await stub.broadcast(tasks) });
     }
 
-    case '/config': {
+    case 'config': {
       return Response.json(await stub.getConfig(uuid));
     }
 
-    case '/config/update': {
+    case 'config/update': {
       await stub.updateConfig(await request.json());
       return new Response('ok');
     }
 
-    case '/kick': {
+    case 'kick': {
       await stub.kick(uuid);
       return new Response('ok');
     }
