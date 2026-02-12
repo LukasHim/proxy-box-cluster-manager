@@ -6,11 +6,9 @@ async function handleRequest(request: Request, { params }: { params: Promise<{ p
   const env: any = getCloudflareContext().env;
   const COMMAND_CENTER = env.COMMAND_CENTER as DurableObjectNamespace;
   const stub: DurableObjectStub & CommandCenter = COMMAND_CENTER.getByName('global') as any;
-
   const uuid = new URL(request.url).searchParams.get('uuid') || 'default';
-  console.log(path);
 
-  switch (path[0]) {
+  switch (path) {
     case 'connection':
       return stub.fetch(request);
 
