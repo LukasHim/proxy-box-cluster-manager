@@ -15,13 +15,13 @@ type Session = {
 
 export class CommandCenter extends DurableObject {
   private sessions: Map<string, Set<Session>> = new Map();
-  private config: Config = { base: {} };
+  private config: Config = {};
 
   constructor(ctx: DurableObjectState, env: any) {
     super(ctx, env);
 
     this.ctx.blockConcurrencyWhile(async () => {
-      this.config = (await this.ctx.storage.get<Config>('config')) || { base: {} };
+      this.config = (await this.ctx.storage.get<Config>('config')) || {};
 
       for (const ws of this.ctx.getWebSockets()) {
         const session: Session = ws.deserializeAttachment();
@@ -106,18 +106,21 @@ export class CommandCenter extends DurableObject {
       ...(this.config[uuid] || {}),
     };
   }
-  async setConfig(body: Config) {
-    this.config = body;
-
-    await this.ctx.storage.put('config', this.config);
-  }
   async updateConfig(body: Config) {
     this.config = {
       ...this.config,
       ...body,
     };
 
-    await this.ctx.storage.put('config', this.config);
+    return this.ctx.storage.put('config', this.config);
+  }
+  async getRawConfig() {
+    return this.config;
+  }
+  async setRawConfig(body: Config) {
+    this.config = body;
+
+    return this.ctx.storage.put('config', this.config);
   }
 
   async kick(uuid: string) {

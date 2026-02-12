@@ -8,47 +8,49 @@ async function handleRequest(request: Request, { params }: { params: Promise<{ p
   const id = COMMAND_CENTER.idFromName('global');
   const stub: CommandCenter & DurableObjectStub = COMMAND_CENTER.get(id, { locationHint: 'enam' }) as any;
   const uuid = new URL(request.url).searchParams.get('uuid') || 'default';
+  try {
+    switch (path) {
+      case 'status':
+        if (request.method === 'GET') {
+          return Response.json(await stub.getStatus());
+        }
 
-  switch (path) {
-    case 'status':
-      return Response.json(await stub.getStatus());
+      case 'push':
+        if (request.method === 'POST') {
+          const tasks = await request.json();
+          return Response.json({ sent: await stub.push(uuid, tasks) });
+        }
 
-    case 'push': {
-      if (request.body) {
-        const tasks = await request.json();
-        return Response.json({ sent: await stub.push(uuid, tasks) });
-      }
+      case 'broadcast':
+        if (request.method === 'POST') {
+          const tasks = await request.json();
+          return Response.json({ sent: await stub.broadcast(tasks) });
+        }
+
+      case 'config':
+        if (request.method === 'GET') {
+          return Response.json(await stub.getConfig(uuid));
+        } else if (request.method === 'POST') {
+          await stub.updateConfig(await request.json());
+          return new Response('ok');
+        }
+
+      case 'config/raw':
+        if (request.method === 'GET') {
+          return Response.json(await stub.getRawConfig());
+        } else if (request.method === 'POST') {
+          await stub.setRawConfig(await request.json());
+          return new Response('ok');
+        }
+
+      case 'kick':
+        if (request.method === 'GET') {
+          await stub.kick(uuid);
+          return new Response('ok');
+        }
     }
-
-    case 'broadcast': {
-      if (request.body) {
-        const tasks = await request.json();
-        return Response.json({ sent: await stub.broadcast(tasks) });
-      }
-    }
-
-    case 'config': {
-      return Response.json(await stub.getConfig(uuid));
-    }
-
-    case 'config/set': {
-      if (request.body) {
-        await stub.setConfig(await request.json());
-        return new Response('ok');
-      }
-    }
-
-    case 'config/update': {
-      if (request.body) {
-        await stub.updateConfig(await request.json());
-        return new Response('ok');
-      }
-    }
-
-    case 'kick': {
-      await stub.kick(uuid);
-      return new Response('ok');
-    }
+  } catch (error: any) {
+    return new Response(`Error: ${error.message}`, { status: 500 });
   }
   return new Response('Not found', { status: 404 });
 }
