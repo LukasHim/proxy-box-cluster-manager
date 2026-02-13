@@ -1,7 +1,12 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { CommandCenter } from '@/CommandCenter';
+import dotenv from 'dotenv';
+dotenv.config();
 
 async function handleRequest(request: Request, { params }: { params: Promise<{ path: string[] }> }) {
+  if (process.env.AUTH_TOKEN && process.env.AUTH_TOKEN !== request.headers.get('Authorization')?.split(' ')[1]) {
+    return new Response('Unauthorized', { status: 401 });
+  }
   let path = (await params).path.join('/');
   const env: any = getCloudflareContext().env;
   const COMMAND_CENTER = env.COMMAND_CENTER as DurableObjectNamespace;
