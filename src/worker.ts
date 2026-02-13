@@ -25,7 +25,7 @@ export default {
     const stub: CommandCenter & DurableObjectStub = env.COMMAND_CENTER.get(id, { locationHint: 'enam' }) as any;
 
     try {
-      const keepaliveMap: Record<string, string> = stub.getAllKeepalive();
+      const keepaliveMap: Record<string, string> = await stub.getAllKeepalive();
 
       for (const [uuid, url] of Object.entries(keepaliveMap)) {
         if (!url) continue;
