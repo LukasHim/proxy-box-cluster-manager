@@ -16,6 +16,8 @@ type Session = {
 export class CommandCenter extends DurableObject {
   private sessions: Map<string, Set<Session>> = new Map();
   private config: Config = {};
+  private messageList: Map<string, any[]> = new Map();
+  private keepaliveUrl: Map<string, string> = new Map();
 
   constructor(ctx: DurableObjectState, env: any) {
     super(ctx, env);
@@ -23,6 +25,15 @@ export class CommandCenter extends DurableObject {
     this.ctx.blockConcurrencyWhile(async () => {
       this.config = (await this.ctx.storage.get<Config>('config')) || {};
 
+      // 恢复 messageList
+      const rawMessages = (await this.ctx.storage.get<Record<string, any[]>>('messageList')) || {};
+      this.messageList = new Map(Object.entries(rawMessages));
+
+      // 恢复 keepalive
+      const rawKeepalive = (await this.ctx.storage.get<Record<string, string>>('keepaliveUrl')) || {};
+      this.keepaliveUrl = new Map(Object.entries(rawKeepalive));
+
+      // 恢复 websocket
       for (const ws of this.ctx.getWebSockets()) {
         const session: Session = ws.deserializeAttachment();
         if (!session) continue;
@@ -60,7 +71,6 @@ export class CommandCenter extends DurableObject {
 
     return stats;
   }
-
   async push(uuid: string, msg: any) {
     const set = this.sessions.get(uuid);
     if (!set) return 0;
@@ -73,13 +83,11 @@ export class CommandCenter extends DurableObject {
       try {
         session.ws.send(payload);
         sent++;
-      } catch {
-      }
+      } catch {}
     }
 
     return sent;
   }
-
   async broadcast(msg: any) {
     const payload = JSON.stringify(msg);
 
@@ -90,8 +98,7 @@ export class CommandCenter extends DurableObject {
         try {
           session.ws.send(payload);
           sent++;
-        } catch {
-        }
+        } catch {}
       }
     }
 
@@ -119,6 +126,37 @@ export class CommandCenter extends DurableObject {
     this.config = body;
 
     return this.ctx.storage.put('config', this.config);
+  }
+
+  private async persistMessages() {
+    await this.ctx.storage.put('messageList', Object.fromEntries(this.messageList));
+  }
+  private async persistKeepalive() {
+    await this.ctx.storage.put('keepaliveUrl', Object.fromEntries(this.keepaliveUrl));
+  }
+  private async pushMessage(uuid: string, msg: any) {
+    let arr = this.messageList.get(uuid);
+    if (!arr) {
+      arr = [];
+      this.messageList.set(uuid, arr);
+    }
+    arr.push(msg);
+    if (arr.length > 10) {
+      arr.shift();
+    }
+    await this.persistMessages();
+  }
+  getMessages(uuid: string) {
+    return this.messageList.get(uuid) || [];
+  }
+  getAllMessages() {
+    return Object.fromEntries(this.messageList);
+  }
+  getKeepaliveUrl(uuid: string) {
+    return this.keepaliveUrl.get(uuid);
+  }
+  getAllKeepalive() {
+    return Object.fromEntries(this.keepaliveUrl);
   }
 
   async kick(uuid: string) {
@@ -171,27 +209,38 @@ export class CommandCenter extends DurableObject {
     set.add(session);
   }
 
-  async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer) {}
-  async webSocketClose(ws: WebSocket, code: number, reason: string, wasClean: boolean) {
+  async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer) {
     const session: Session = ws.deserializeAttachment();
-    const set = this.sessions.get(session.uuid);
-    set?.forEach(foo => {
-      if (foo.uuid === session.uuid) {
-        set.delete(foo);
-      }
-    });
+    const uuid = session.uuid;
+    try {
+      const msg = JSON.parse(message.toString());
+      switch (msg.type) {
+        case 'keepalive_url': {
+          this.keepaliveUrl.set(uuid, msg.data);
+          await this.persistKeepalive();
+          break;
+        }
 
-    if (set?.size === 0) this.sessions.delete(session.uuid);
+        default:
+          await this.pushMessage(uuid, msg);
+          break;
+      }
+    } catch (error) {}
+  }
+  async webSocketClose(ws: WebSocket, code: number, reason: string, wasClean: boolean) {
+    this.removeSession(ws);
   }
   async webSocketError(ws: WebSocket, error: unknown) {
-    const session: Session = ws.deserializeAttachment();
-    const set = this.sessions.get(session.uuid);
-    set?.forEach(foo => {
-      if (foo.uuid === session.uuid) {
-        set.delete(foo);
+    this.removeSession(ws);
+  }
+  private removeSession(ws: WebSocket) {
+    for (const [uuid, set] of this.sessions) {
+      for (const s of set) {
+        if (s.ws === ws) {
+          set.delete(s);
+        }
       }
-    });
-
-    if (set?.size === 0) this.sessions.delete(session.uuid);
+      if (set.size === 0) this.sessions.delete(uuid);
+    }
   }
 }

@@ -15,7 +15,27 @@ export default {
     return handler.fetch(request, env, ctx);
   },
 
-  async scheduled(event) {
-    // ...
+  async scheduled(event, env, ctx) {
+    const id = env.COMMAND_CENTER.idFromName('global');
+    const stub: CommandCenter & DurableObjectStub = env.COMMAND_CENTER.get(id, { locationHint: 'enam' }) as any;
+
+    try {
+      const keepaliveMap: Record<string, string> = stub.getAllKeepalive();
+
+      for (const [uuid, url] of Object.entries(keepaliveMap)) {
+        if (!url) continue;
+
+        ctx.waitUntil(
+          fetch(url, {
+            method: 'GET',
+            cf: {
+              cacheTtl: 0,
+            },
+          }).catch(() => {}),
+        );
+      }
+    } catch (err) {
+      console.error('scheduled keepalive error:', err);
+    }
   },
 } satisfies ExportedHandler<CloudflareEnv>;
