@@ -61,11 +61,11 @@ export class CommandCenter extends DurableObject {
     return stats;
   }
 
-  async push(uuid: string, tasks: any) {
+  async push(uuid: string, msg: any) {
     const set = this.sessions.get(uuid);
     if (!set) return 0;
 
-    const payload = JSON.stringify(tasks);
+    const payload = JSON.stringify(msg);
 
     let sent = 0;
 
@@ -74,15 +74,14 @@ export class CommandCenter extends DurableObject {
         session.ws.send(payload);
         sent++;
       } catch {
-        set.delete(session);
       }
     }
 
     return sent;
   }
 
-  async broadcast(tasks: any) {
-    const payload = JSON.stringify(tasks);
+  async broadcast(msg: any) {
+    const payload = JSON.stringify(msg);
 
     let sent = 0;
 
@@ -92,7 +91,6 @@ export class CommandCenter extends DurableObject {
           session.ws.send(payload);
           sent++;
         } catch {
-          set.delete(session);
         }
       }
     }

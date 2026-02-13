@@ -21,7 +21,9 @@ export default function AdminPanel() {
     Record<string, { connections: number; sessions: { version: string; ip: string; connectedAt: number }[] }>
   >({});
   const [targetUuid, setTargetUuid] = useState('');
-  const [command, setCommand] = useState('[{"type":"MSG","details":"Hello"}]');
+  const [command, setCommand] = useState(
+    '{"type":"refresh_config/get_env/process_restart/process_update/push_tasks","data":""}',
+  );
 
   const refresh = async () => {
     try {
@@ -37,7 +39,7 @@ export default function AdminPanel() {
     if (!targetUuid) return;
     await fetch(`/api/push?uuid=${targetUuid}`, {
       method: 'POST',
-      body: command,
+      body: JSON.stringify(command),
     });
   };
 
