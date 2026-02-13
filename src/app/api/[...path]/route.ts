@@ -5,7 +5,7 @@ dotenv.config();
 
 async function handleRequest(request: Request, { params }: { params: Promise<{ path: string[] }> }) {
   if (process.env.AUTH_TOKEN && process.env.AUTH_TOKEN !== request.headers.get('Authorization')?.split(' ')[1]) {
-    return new Response('Unauthorized', { status: 401 });
+    // return new Response('Unauthorized', { status: 401 });
   }
   let path = (await params).path.join('/');
   const env: any = getCloudflareContext().env;
@@ -60,13 +60,13 @@ async function handleRequest(request: Request, { params }: { params: Promise<{ p
 
       case 'messages': {
         if (uuid) {
-          return Response.json(stub.getMessages(uuid));
+          return Response.json(await stub.getMessages(uuid));
         }
-        return Response.json(stub.getAllMessages());
+        return Response.json(await stub.getAllMessages());
       }
 
       case 'keepalive': {
-        return Response.json(stub.getAllKeepalive());
+        return Response.json(await stub.getAllKeepalive());
       }
 
       case 'kick': {

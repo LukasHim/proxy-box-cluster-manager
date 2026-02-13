@@ -27,7 +27,11 @@ export default function AdminPanel() {
 
   const refresh = async () => {
     try {
-      const res = await fetch('/api/status');
+      const res = await fetch('/api/status', {
+        headers: {
+          Authorization: 'Bearer ' + '',
+        },
+      });
       const data: any = await res.json();
       setStatus(data);
     } catch (e) {
@@ -39,6 +43,9 @@ export default function AdminPanel() {
     if (!targetUuid) return;
     await fetch(`/api/push?uuid=${targetUuid}`, {
       method: 'POST',
+      headers: {
+        Authorization: 'Bearer ' + '',
+      },
       body: JSON.stringify(command),
     });
   };
