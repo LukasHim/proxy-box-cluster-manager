@@ -146,6 +146,9 @@ export class CommandCenter extends DurableObject {
   }
   deleteAllStorage() {
     this.ctx.storage.deleteAll();
+    this.config = {};
+    this.messageList = [];
+    this.sessions.clear();
   }
 
   async kick(uuid: string) {
