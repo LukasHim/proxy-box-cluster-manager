@@ -50,6 +50,11 @@ const resources = {
       'Recent Messages': 'Recent Messages',
       Time: 'Time',
       'No messages': 'No messages',
+      Actions: 'Actions',
+      View: 'View',
+      Copy: 'Copy',
+      'Message Details': 'Message Details',
+      Close: 'Close',
     },
   },
   zh: {
@@ -98,6 +103,11 @@ const resources = {
       'Recent Messages': '最近消息',
       Time: '时间',
       'No messages': '暂无消息',
+      Actions: '操作',
+      View: '查看',
+      Copy: '复制',
+      'Message Details': '消息详情',
+      Close: '关闭',
     },
   },
 };

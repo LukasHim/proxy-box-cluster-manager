@@ -116,12 +116,11 @@ export default function Dashboard() {
               <RefreshCcw size={18} />
             </Button>
           </CardHeader>
-          <CardBody className='overflow-x-auto'>
+          <CardBody>
             <Table
               aria-label='Cluster status table'
               selectionMode='single'
               removeWrapper={true}
-              className='min-w-full'
               onSelectionChange={keys => {
                 const selectedUuid: any = Array.from(keys)[0];
                 updateConfig({ targetUuid: selectedUuid });
