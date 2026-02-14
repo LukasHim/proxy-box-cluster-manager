@@ -1,6 +1,6 @@
 {
 	"name": "proxy-box-cluster-manager",
-	"version": "0.1.2",
+	"version": "1.0.0",
 	"scripts": {
 		"dev": "next dev",
 		"build": "next build",

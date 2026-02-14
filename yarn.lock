@@ -10024,6 +10024,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"lucide@npm:^0.564.0":
+  version: 0.564.0
+  resolution: "lucide@npm:0.564.0"
+  checksum: 10c0/bea2d42958a2dfd964a00391a2c359df1eaaeee59954ce092ac373d31185f0d5d394f8141d5ee6cb96bcf719f9cd63ac180ed5549c5fe35395a8f3c03b888b6a
+  languageName: node
+  linkType: hard
+
 "magic-string@npm:^0.30.21":
   version: 0.30.21
   resolution: "magic-string@npm:0.30.21"
@@ -10848,6 +10855,7 @@ __metadata:
     eslint: "npm:^10.0.0"
     eslint-config-next: "npm:^16.1.6"
     framer-motion: "npm:^12.34.0"
+    lucide: "npm:^0.564.0"
     lucide-react: "npm:^0.563.0"
     next: "npm:^16.1.6"
     postcss: "npm:^8.5.6"
