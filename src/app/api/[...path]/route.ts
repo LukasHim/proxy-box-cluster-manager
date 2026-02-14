@@ -59,14 +59,24 @@ async function handleRequest(request: Request, { params }: { params: Promise<{ p
       }
 
       case 'messages': {
-        if (uuid) {
-          return Response.json(await stub.getMessages(uuid));
+        if (request.method === 'GET') {
+          return Response.json(await stub.getAllMessages());
         }
-        return Response.json(await stub.getAllMessages());
+      }
+
+      case 'deleteAllStorage': {
+        if (request.method === 'GET') {
+          return Response.json(await stub.deleteAllStorage());
+        }
       }
 
       case 'keepalive': {
-        return Response.json(await stub.getAllKeepalive());
+        if (request.method === 'GET') {
+          let keepaliveUrls = await env.KV.get('keepaliveUrls');
+          if (!keepaliveUrls) keepaliveUrls = '{}';
+          let keepaliveMap: Record<string, string> = JSON.parse(keepaliveUrls);
+          return Response.json(keepaliveMap);
+        }
       }
 
       case 'kick': {

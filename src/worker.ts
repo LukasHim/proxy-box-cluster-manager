@@ -21,11 +21,10 @@ export default {
   },
 
   async scheduled(event, env, ctx) {
-    const id = env.COMMAND_CENTER.idFromName('global');
-    const stub: CommandCenter & DurableObjectStub = env.COMMAND_CENTER.get(id, { locationHint: 'enam' }) as any;
-
     try {
-      const keepaliveMap: Record<string, string> = await stub.getAllKeepalive();
+      const keepaliveUrls = await env.KV.get('keepaliveUrls');
+      if (!keepaliveUrls) return;
+      let keepaliveMap: Record<string, string> = JSON.parse(keepaliveUrls);
 
       for (const [uuid, url] of Object.entries(keepaliveMap)) {
         if (!url) continue;

@@ -16,8 +16,11 @@ type Session = {
 export class CommandCenter extends DurableObject {
   private sessions: Map<string, Set<Session>> = new Map();
   private config: Config = {};
-  private messageList: Map<string, any[]> = new Map();
-  private keepaliveUrl: Map<string, string> = new Map();
+  private messageList: {
+    uuid?: string;
+    data?: any;
+    time?: number;
+  }[] = [];
 
   constructor(ctx: DurableObjectState, env: any) {
     super(ctx, env);
@@ -26,12 +29,8 @@ export class CommandCenter extends DurableObject {
       this.config = (await this.ctx.storage.get<Config>('config')) || {};
 
       // 恢复 messageList
-      const rawMessages = (await this.ctx.storage.get<Record<string, any[]>>('messageList')) || {};
-      this.messageList = new Map(Object.entries(rawMessages));
-
-      // 恢复 keepalive
-      const rawKeepalive = (await this.ctx.storage.get<Record<string, string>>('keepaliveUrl')) || {};
-      this.keepaliveUrl = new Map(Object.entries(rawKeepalive));
+      const rawMessages = (await this.ctx.storage.get<any>('messageList')) || [];
+      this.messageList = rawMessages;
 
       // 恢复 websocket
       for (const ws of this.ctx.getWebSockets()) {
@@ -129,34 +128,24 @@ export class CommandCenter extends DurableObject {
   }
 
   private async persistMessages() {
-    await this.ctx.storage.put('messageList', Object.fromEntries(this.messageList));
-  }
-  private async persistKeepalive() {
-    await this.ctx.storage.put('keepaliveUrl', Object.fromEntries(this.keepaliveUrl));
+    await this.ctx.storage.put('messageList', this.messageList);
   }
   private async pushMessage(uuid: string, msg: any) {
-    let arr = this.messageList.get(uuid);
+    let arr = this.messageList;
     if (!arr) {
       arr = [];
-      this.messageList.set(uuid, arr);
     }
-    arr.push(msg);
-    if (arr.length > 10) {
+    arr.push({ uuid, data: msg, time: Date.now() });
+    if (arr.length > 50) {
       arr.shift();
     }
     await this.persistMessages();
   }
-  getMessages(uuid: string) {
-    return this.messageList.get(uuid) || [];
-  }
   getAllMessages() {
-    return Object.fromEntries(this.messageList);
+    return this.messageList;
   }
-  getKeepaliveUrl(uuid: string) {
-    return this.keepaliveUrl.get(uuid);
-  }
-  getAllKeepalive() {
-    return Object.fromEntries(this.keepaliveUrl);
+  deleteAllStorage() {
+    this.ctx.storage.deleteAll();
   }
 
   async kick(uuid: string) {
@@ -216,8 +205,10 @@ export class CommandCenter extends DurableObject {
       const msg = JSON.parse(message.toString());
       switch (msg.type) {
         case 'keepalive_url': {
-          this.keepaliveUrl.set(uuid, msg.data);
-          await this.persistKeepalive();
+          let keepaliveUrls = await this.env.KV.get('keepaliveUrls');
+          if (!keepaliveUrls) keepaliveUrls = '{}';
+          let keepaliveMap: Record<string, string> = JSON.parse(keepaliveUrls);
+          this.env.KV.put('keepaliveUrls', JSON.stringify({ ...keepaliveMap, [uuid]: msg.data }));
           break;
         }
 
