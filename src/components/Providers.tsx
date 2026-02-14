@@ -6,6 +6,7 @@ import { ConfigProvider } from '@/contexts/ConfigContext';
 import { I18nextProvider } from 'react-i18next';
 import i18n from '@/translations/i18n';
 import { useEffect, useState } from 'react';
+import DynamicTitle from './DynamicTitle';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
@@ -30,6 +31,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <ConfigProvider>
           <I18nextProvider i18n={i18n}>
             <ToastProvider />
+            <DynamicTitle />
             {children}
           </I18nextProvider>
         </ConfigProvider>
