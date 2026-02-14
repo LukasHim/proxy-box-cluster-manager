@@ -27,7 +27,7 @@
   "observability": {
     "enabled": true,
   },
-  "kv_namespaces": [{ "binding": "KV", "id": "proxy-box-cluster-manager-kv" }],
+  "kv_namespaces": [{ "binding": "KV" }],
   "durable_objects": {
     "bindings": [
       {
